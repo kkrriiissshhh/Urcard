@@ -352,6 +352,20 @@
             100% { transform: translateY(120vh) rotateZ(720deg); opacity: 0; }
         }
 
+        /* --- Watermark --- */
+        .watermark {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--gold);
+            opacity: 0.8;
+            font-size: 0.9rem;
+            font-family: var(--font-body);
+            letter-spacing: 1px;
+            pointer-events: none; /* Make it non-interactive */
+        }
+
         /* --- Responsive Design --- */
         @media (max-width: 600px) {
             #form-section h1, #share-section h2, #headingDisplay { font-size: 2.5rem; }
@@ -369,23 +383,25 @@
     <section id="form-section" class="page-section">
         <div class="card-container">
             <h1>An Elegant Card</h1>
-            <p>Fill the details below to create a memory.</p>
+            <p>Fill the details below.</p>
             <form id="cardForm">
                 <div class="input-group">
-                    <label for="name">Recipient's Name:</label>
-                    <input type="text" id="name" required placeholder="e.g., Jane Doe">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" required placeholder="e.g., Krish">
                 </div>
                 <div class="input-group">
                     <label for="heading">Heading:</label>
-                    <input type="text" id="heading" required placeholder="e.g., Happy Anniversary!">
+                    <input type="text" id="heading" required placeholder="e.g., Happy Birthday!">
                 </div>
                 <div class="input-group">
                     <label for="message">Your Message:</label>
-                    <textarea id="message" rows="4" required placeholder="A heartfelt wish..."></textarea>
+                    <textarea id="message" rows="4" required placeholder="May God Bless You..."></textarea>
                 </div>
                 <button type="submit" class="styled-button">Create Card</button>
             </form>
         </div>
+        <!-- Watermark Added Here -->
+        <div class="watermark">Made By KKC</div>
     </section>
     
     <!-- Section 2: Share Link Screen -->
