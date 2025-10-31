@@ -483,7 +483,7 @@
         const shareLinkEl = document.getElementById('shareLink');
         const copyButton = document.getElementById('copyButton');
         const proceedButton = document.getElementById('proceedButton');
-        const externalLink = document.getElementById('externalLink'); // Get the new link
+        const externalLink = document.getElementById('externalLink');
         const transitionOverlay = document.getElementById('transition-overlay');
         const transitionText = document.getElementById('transition-text');
         const headingDisplay = document.getElementById('headingDisplay');
@@ -527,7 +527,7 @@
                 successMsg.classList.add('visible');
                 copyButton.style.display = 'none';
                 proceedButton.style.display = 'block';
-                externalLink.style.display = 'inline-block'; // Show the new link
+                externalLink.style.display = 'inline-block';
                 setTimeout(() => successMsg.classList.remove('visible'), 2000);
             });
         });
@@ -569,12 +569,8 @@
             messageDisplay.textContent = data.message;
         }
 
-        // NEW function to handle first user interaction for permissions
         function handleFirstInteraction() {
-            // Now that user has interacted, we can play music
             backgroundMusic.play();
-
-            // For iOS 13+, we must request permission for motion sensors after a user gesture.
             if (typeof DeviceMotionEvent.requestPermission === 'function') {
                 DeviceMotionEvent.requestPermission()
                     .then(permissionState => {
@@ -596,7 +592,6 @@
             celebrationContainer.innerHTML = '';
 
             backgroundMusic.currentTime = 0;
-            // Try to play music. If it fails (due to browser policy), set up a one-time click handler.
             backgroundMusic.play().catch(() => {
                 document.body.addEventListener('click', handleFirstInteraction, { once: true });
             });
@@ -620,51 +615,51 @@
             }, 800);
         }
 
-        // --- MODIFIED SHAKE DETECTION LOGIC ---
+        // --- MODIFIED SHAKE DETECTION LOGIC (Less Sensitive) ---
         function handleMotion(event) {
-             if (candlesBlownOut) return;
-             if (!event.accelerationIncludingGravity.x) { return; }
+            if (candlesBlownOut) return;
+            if (!event.accelerationIncludingGravity.x) { return; }
 
-             const a = event.accelerationIncludingGravity;
-             const now = new Date().getTime();
+            const a = event.accelerationIncludingGravity;
+            const now = Date.now();
 
-             // We check for motion every 100ms to avoid flooding
-             if ((now - handleMotion.lastUpdate) > 100) {
-                 const diff = now - handleMotion.lastUpdate;
-                 handleMotion.lastUpdate = now;
+            if ((now - handleMotion.lastUpdate) < 100) {
+                return;
+            }
 
-                 // Calculate a 'speed' or intensity of the shake
-                 const speed = Math.abs(a.x + a.y + a.z - handleMotion.last_x - handleMotion.last_y - handleMotion.last_z) / diff * 10000;
+            const diffTime = now - handleMotion.lastUpdate;
+            handleMotion.lastUpdate = now;
 
-                 const SHAKE_THRESHOLD = 80; // Higher value means a more vigorous shake is needed
-                 const REQUIRED_SHAKES = 3;  // How many shakes in a row
-                 const SHAKE_TIMEOUT = 500;  // Milliseconds between shakes to count as a sequence
+            const speed = Math.abs(a.x + a.y + a.z - handleMotion.last_x - handleMotion.last_y - handleMotion.last_z) / diffTime * 10000;
+            
+            // --- ADJUST THESE VALUES to change sensitivity ---
+            // SHAKE_THRESHOLD: How strong a single shake must be. HIGHER = less sensitive (requires a rougher shake).
+            const SHAKE_THRESHOLD = 450; 
+            // REQUIRED_SHAKES: How many strong shakes are needed in a row.
+            const REQUIRED_SHAKES = 2;
+            // SHAKE_TIMEOUT: The maximum time (in ms) between shakes to be counted as a sequence. SHORTER = more rapid shaking needed.
+            const SHAKE_TIMEOUT = 500;
 
-                 // If shake is strong enough, start counting
-                 if (speed > SHAKE_THRESHOLD) {
-                    // If it's been too long since the last shake, reset the count
-                    if (now - handleMotion.lastShakeTime > SHAKE_TIMEOUT) {
-                        handleMotion.shakeCount = 1;
-                    } else { // Otherwise, it's a consecutive shake
-                        handleMotion.shakeCount++;
-                    }
+            if (speed > SHAKE_THRESHOLD) {
+                if ((now - handleMotion.lastShakeTime) > SHAKE_TIMEOUT) {
+                    handleMotion.shakeCount = 1;
+                } else {
+                    handleMotion.shakeCount++;
+                }
+                
+                handleMotion.lastShakeTime = now;
 
-                    // Record the time of this shake
-                    handleMotion.lastShakeTime = now;
-
-                    // If we have enough consecutive shakes, trigger the action
-                    if (handleMotion.shakeCount >= REQUIRED_SHAKES) {
-                        blowOutCandles();
-                    }
-                 }
-
-                 // Update last position for the next calculation
-                 handleMotion.last_x = a.x;
-                 handleMotion.last_y = a.y;
-                 handleMotion.last_z = a.z;
-             }
+                if (handleMotion.shakeCount >= REQUIRED_SHAKES) {
+                    blowOutCandles();
+                }
+            }
+            
+            handleMotion.last_x = a.x;
+            handleMotion.last_y = a.y;
+            handleMotion.last_z = a.z;
         }
-        // Initialize variables attached to the function object to keep them scoped
+
+        // Initialize state variables on the function itself to avoid global scope pollution
         handleMotion.lastUpdate = 0;
         handleMotion.last_x = 0;
         handleMotion.last_y = 0;
@@ -672,11 +667,7 @@
         handleMotion.shakeCount = 0;
         handleMotion.lastShakeTime = 0;
 
-
         function setupShakeDetection() {
-            // This listener is added immediately. On iOS 13+, it won't receive data
-            // until permission is granted via handleFirstInteraction().
-            // On other devices (like Android), it will work immediately.
             if (window.DeviceMotionEvent) {
                 window.addEventListener('devicemotion', handleMotion);
             }
