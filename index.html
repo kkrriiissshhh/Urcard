@@ -620,30 +620,58 @@
             }, 800);
         }
 
+        // --- MODIFIED SHAKE DETECTION LOGIC ---
         function handleMotion(event) {
              if (candlesBlownOut) return;
-             // Some devices may not provide this data without permission first.
-             if (!event.accelerationIncludingGravity.x) {
-                return;
-             }
+             if (!event.accelerationIncludingGravity.x) { return; }
+
              const a = event.accelerationIncludingGravity;
              const now = new Date().getTime();
+
+             // We check for motion every 100ms to avoid flooding
              if ((now - handleMotion.lastUpdate) > 100) {
                  const diff = now - handleMotion.lastUpdate;
                  handleMotion.lastUpdate = now;
+
+                 // Calculate a 'speed' or intensity of the shake
                  const speed = Math.abs(a.x + a.y + a.z - handleMotion.last_x - handleMotion.last_y - handleMotion.last_z) / diff * 10000;
-                 if (speed > 35) {
-                    blowOutCandles();
+
+                 const SHAKE_THRESHOLD = 80; // Higher value means a more vigorous shake is needed
+                 const REQUIRED_SHAKES = 3;  // How many shakes in a row
+                 const SHAKE_TIMEOUT = 500;  // Milliseconds between shakes to count as a sequence
+
+                 // If shake is strong enough, start counting
+                 if (speed > SHAKE_THRESHOLD) {
+                    // If it's been too long since the last shake, reset the count
+                    if (now - handleMotion.lastShakeTime > SHAKE_TIMEOUT) {
+                        handleMotion.shakeCount = 1;
+                    } else { // Otherwise, it's a consecutive shake
+                        handleMotion.shakeCount++;
+                    }
+
+                    // Record the time of this shake
+                    handleMotion.lastShakeTime = now;
+
+                    // If we have enough consecutive shakes, trigger the action
+                    if (handleMotion.shakeCount >= REQUIRED_SHAKES) {
+                        blowOutCandles();
+                    }
                  }
+
+                 // Update last position for the next calculation
                  handleMotion.last_x = a.x;
                  handleMotion.last_y = a.y;
                  handleMotion.last_z = a.z;
              }
         }
+        // Initialize variables attached to the function object to keep them scoped
         handleMotion.lastUpdate = 0;
         handleMotion.last_x = 0;
         handleMotion.last_y = 0;
         handleMotion.last_z = 0;
+        handleMotion.shakeCount = 0;
+        handleMotion.lastShakeTime = 0;
+
 
         function setupShakeDetection() {
             // This listener is added immediately. On iOS 13+, it won't receive data
