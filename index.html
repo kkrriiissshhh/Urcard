@@ -184,6 +184,22 @@
              background: #c29292;
              border-color: #c29292;
         }
+
+        /* NEW STYLE for the clickable link */
+        #externalLink {
+            display: none; /* Hide by default */
+            margin-top: 15px;
+            color: var(--dark-text);
+            text-decoration: none;
+            font-size: 1rem;
+            border-bottom: 1px dashed var(--dark-text);
+            transition: color 0.3s;
+            padding-bottom: 2px;
+        }
+        #externalLink:hover {
+            color: var(--gold);
+            border-bottom-color: var(--gold);
+        }
         
         .copy-success {
             opacity: 0;
@@ -415,6 +431,8 @@
             <button id="copyButton" class="styled-button">Copy Link 📋</button>
             <p class="copy-success">Copied to clipboard!</p>
             <button id="proceedButton" class="styled-button">Proceed to Card 💌</button>
+            <!-- NEW clickable text link -->
+            <a href="https://www.shorturl.at/" id="externalLink">Short URL Here!</a>
         </div>
     </section>
     
@@ -441,7 +459,7 @@
             </div>
             <p id="nameDisplay" class="animate-in"></p>
             <div class="interaction-hint animate-in">
-                <p>Shake your phone or say "Thank you"!</p>
+                <p>Shake your phone!</p>
             </div>
             <p id="messageDisplay"></p>
         </div>
@@ -465,6 +483,7 @@
         const shareLinkEl = document.getElementById('shareLink');
         const copyButton = document.getElementById('copyButton');
         const proceedButton = document.getElementById('proceedButton');
+        const externalLink = document.getElementById('externalLink'); // Get the new link
         const transitionOverlay = document.getElementById('transition-overlay');
         const transitionText = document.getElementById('transition-text');
         const headingDisplay = document.getElementById('headingDisplay');
@@ -479,7 +498,6 @@
         // --- State ---
         let currentCardData = {};
         let candlesBlownOut = false;
-        let speechRecognition;
         let candleTimeoutId = null; 
 
         // --- Core Logic ---
@@ -509,6 +527,7 @@
                 successMsg.classList.add('visible');
                 copyButton.style.display = 'none';
                 proceedButton.style.display = 'block';
+                externalLink.style.display = 'inline-block'; // Show the new link
                 setTimeout(() => successMsg.classList.remove('visible'), 2000);
             });
         });
@@ -550,6 +569,23 @@
             messageDisplay.textContent = data.message;
         }
 
+        // NEW function to handle first user interaction for permissions
+        function handleFirstInteraction() {
+            // Now that user has interacted, we can play music
+            backgroundMusic.play();
+
+            // For iOS 13+, we must request permission for motion sensors after a user gesture.
+            if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState !== 'granted') {
+                            console.warn('Permission for device motion was not granted.');
+                        }
+                    })
+                    .catch(console.error);
+            }
+        }
+
         // --- Interactive Card Functions ---
         function initializeCardInteractivity() {
             candlesBlownOut = false;
@@ -560,10 +596,12 @@
             celebrationContainer.innerHTML = '';
 
             backgroundMusic.currentTime = 0;
-            backgroundMusic.play().catch(() => document.body.addEventListener('click', () => backgroundMusic.play(), { once: true }));
-
+            // Try to play music. If it fails (due to browser policy), set up a one-time click handler.
+            backgroundMusic.play().catch(() => {
+                document.body.addEventListener('click', handleFirstInteraction, { once: true });
+            });
+            
             setupShakeDetection();
-            setupSpeechRecognition();
             candleTimeoutId = setTimeout(blowOutCandles, 120000); 
         }
         
@@ -577,7 +615,6 @@
 
             setTimeout(() => {
                 messageDisplay.classList.add('visible');
-                if (speechRecognition) speechRecognition.stop();
                 window.removeEventListener('devicemotion', handleMotion);
                 startCelebration(); 
             }, 800);
@@ -585,13 +622,19 @@
 
         function handleMotion(event) {
              if (candlesBlownOut) return;
+             // Some devices may not provide this data without permission first.
+             if (!event.accelerationIncludingGravity.x) {
+                return;
+             }
              const a = event.accelerationIncludingGravity;
              const now = new Date().getTime();
              if ((now - handleMotion.lastUpdate) > 100) {
                  const diff = now - handleMotion.lastUpdate;
                  handleMotion.lastUpdate = now;
                  const speed = Math.abs(a.x + a.y + a.z - handleMotion.last_x - handleMotion.last_y - handleMotion.last_z) / diff * 10000;
-                 if (speed > 35) blowOutCandles();
+                 if (speed > 35) {
+                    blowOutCandles();
+                 }
                  handleMotion.last_x = a.x;
                  handleMotion.last_y = a.y;
                  handleMotion.last_z = a.z;
@@ -602,33 +645,12 @@
         handleMotion.last_y = 0;
         handleMotion.last_z = 0;
 
-
-        // 1. Shake Detection
         function setupShakeDetection() {
+            // This listener is added immediately. On iOS 13+, it won't receive data
+            // until permission is granted via handleFirstInteraction().
+            // On other devices (like Android), it will work immediately.
             if (window.DeviceMotionEvent) {
                 window.addEventListener('devicemotion', handleMotion);
-            }
-        }
-
-        // 2. Speech Recognition
-        function setupSpeechRecognition() {
-            const SpeechAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (SpeechAPI) {
-                speechRecognition = new SpeechAPI();
-                speechRecognition.continuous = true;
-                speechRecognition.onresult = e => {
-                    const transcript = e.results[e.results.length - 1][0].transcript.trim().toLowerCase();
-                    if (transcript.includes("thank you")) blowOutCandles();
-                };
-                speechRecognition.onerror = e => console.error("Speech Error:", e.error);
-                speechRecognition.onend = () => {
-                    if (!candlesBlownOut) {
-                        try { speechRecognition.start(); }
-                        catch(e) { console.error("Could not restart SR.", e); }
-                    }
-                };
-                try { speechRecognition.start(); } 
-                catch (e) { console.warn("Speech recognition failed to start."); }
             }
         }
 
